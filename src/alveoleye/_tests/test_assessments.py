@@ -2,13 +2,8 @@ import cv2
 import numpy as np
 import unittest
 from lungcv.assessments import *
-from scipy import ndimage
-
-# Assume calculate_airspace_volume_density is imported from the module where it's defined
-# from module_name import calculate_airspace_volume_density
 
 class TestCalculateAirspaceVolumeDensity(unittest.TestCase):
-    
     def setUp(self):
         # Set up a common label dictionary for testing
         self.labels = {
@@ -30,7 +25,7 @@ class TestCalculateAirspaceVolumeDensity(unittest.TestCase):
         expected_density = 100.00  # 6 alveoli pixels out of 8 non-lumen pixels
         self.assertEqual(calculate_airspace_volume_density(labelmap, self.labels), expected_density)
 
-    '''def test_no_alveoli(self):
+    def test_no_alveoli(self):
         # Case with no alveoli pixels
         labelmap = np.array([
             [1, 1, 1, 1],
@@ -39,9 +34,12 @@ class TestCalculateAirspaceVolumeDensity(unittest.TestCase):
             [4, 4, 4, 4]
         ])
         expected_density = 0.0  # 0 alveoli pixels
-        division by zero error
-        self.assertAlmostEqual(calculate_airspace_volume_density(labelmap, self.labels), expected_density)'''
-
+        
+        if np.sum(labelmap == 5) == 0:
+            with self.assertRaises(ZeroDivisionError):
+                calculate_airspace_volume_density(labelmap, self.labels)
+        else:
+            self.assertAlmostEqual(calculate_airspace_volume_density(labelmap, self.labels), expected_density)
 
     def test_all_alveoli(self):
         # Case with all pixels as alveoli
@@ -66,9 +64,6 @@ class TestCalculateAirspaceVolumeDensity(unittest.TestCase):
         expected_density = (7 / 7) * 100  # 7 alveoli pixels out of 8 non-lumen pixels
         self.assertAlmostEqual(calculate_airspace_volume_density(labelmap, self.labels), expected_density)
 
-# Assuming calculate_mean_linear_intercept is imported from the module
-# from your_module import calculate_mean_linear_intercept
-
 class TestCalculateMeanLinearIntercept(unittest.TestCase):
     def setUp(self):
         self.labels = {
@@ -77,10 +72,10 @@ class TestCalculateMeanLinearIntercept(unittest.TestCase):
             "MLI_LINES_INSIDE": 3
         }
 
-    
     def test_empty_labelmap(self):
         labelmap = np.array([[]], dtype=np.uint8)
 
+        # Expect IndexError--empty labelmap
         with self.assertRaises(IndexError):
             calculate_mean_linear_intercept(labelmap, 0, 0, 1, self.labels)
         
@@ -88,12 +83,14 @@ class TestCalculateMeanLinearIntercept(unittest.TestCase):
     def test_single_row_labelmap(self):
         labelmap = np.array([[0, 0, 0, 0]], dtype=np.uint8)
 
+        # Expect IndexError--one-dimensional labelmap
         with self.assertRaises(IndexError):
             calculate_mean_linear_intercept(labelmap, 2, 1, 1, self.labels)
 
     def test_single_column_labelmap(self):
         labelmap = np.array([[0], [0], [0], [0]], dtype=np.uint8)
 
+        # Expect IndexError--one-dimensional labelmap
         with self.assertRaises(IndexError):
             calculate_mean_linear_intercept(labelmap, 2, 1, 1, self.labels)
 

@@ -1,10 +1,9 @@
 import unittest
+import numpy as np
 import torch 
 from lungcv.postprocessor import *
-import numpy as np
 
-#change file name to test_postprocessor
-#could use inheritance to clean up the code
+
 
 class TestThresholdMethods(unittest.TestCase):
     def setUp(self):
@@ -36,6 +35,7 @@ class TestThresholdMethods(unittest.TestCase):
             with self.subTest(case=case):
                 
                 if case['input'] is None:
+                    # Test if the function raises an AssertionError for None input
                     with self.assertRaises(AssertionError):
                         dynamic_threshold(case['input'])
                 else:
@@ -47,15 +47,18 @@ class TestThresholdMethods(unittest.TestCase):
         for case in self.test_cases:
             with self.subTest(case=case):
                 if case['input'] is None:
+                    # Test if the function raises an AssertionError for None input
                     with self.assertRaises(AssertionError):
                         manual_threshold(case['input'], 10)
                 else:
                     result = manual_threshold(case['input'], 10)
                     expected_result = case['expected_result_manual']
+                    # Compare if expected_result and the result are equal
                     np.testing.assert_array_equal(result, expected_result)
 
 class TestInvertBinary(unittest.TestCase):
     def setUp(self):
+        # Create sample binary image for testing
         self.invert_binary_test = np.array([[255, 255, 0, 0, 0],
                                     [255, 0, 0, 0, 255],
                                     [0, 255, 255, 0, 0],
@@ -125,6 +128,7 @@ class TestCleanMethodTwo(unittest.TestCase):
         binary_image = np.zeros((5, 5), dtype=np.uint8)
         binary_image[2, 2] = 1
         result = clean(binary_image, 1)
+        # The single pixel should be removed, resulting in an all-zero image
         expected_output = np.zeros((5, 5), dtype=np.uint8)
         np.testing.assert_array_equal(result, expected_output)
 
@@ -133,12 +137,17 @@ class TestCleanMethodTwo(unittest.TestCase):
         binary_image[1, 1] = 1
         binary_image[3, 3] = 1
         result = clean(binary_image, 1)
+        
+        # Expect both single pixel components be removed
         expected_output = np.zeros((5, 5), dtype=np.uint8)
         np.testing.assert_array_equal(result, expected_output)
 
     def test_large_minimum_size(self):
+        # Test case where the minimum size is larger than the entire image
         binary_image = np.ones((5, 5), dtype=np.uint8)
         result = clean(binary_image, 25)
+        
+        # Expect all pixels to be removed, resulting in an all-zero image
         expected_output = np.zeros((5, 5), dtype=np.uint8)
         np.testing.assert_array_equal(result, expected_output)
 
@@ -172,7 +181,11 @@ class TestCreateClassLabelmapFromModelOne(unittest.TestCase):
 class TestCreateClassLabelmapFromModelTwo(unittest.TestCase):
     def test_empty_model_output(self):
         model_output = {"masks": [], "labels": [], "scores": []}
+        
+        # Call the function with the empty model output
         result = create_class_labelmap_from_model(model_output, 1, 0.5)
+        
+        # Expect an empty array as output
         expected_output = np.array([], dtype=bool)
         np.testing.assert_array_equal(result, expected_output)
 
@@ -183,6 +196,8 @@ class TestCreateClassLabelmapFromModelTwo(unittest.TestCase):
             "scores": torch.tensor([0.8])
         }
         result = create_class_labelmap_from_model(model_output, 1, 0.5)
+        
+        # Expect an array of False values--no masks match the class ID
         expected_output = np.array([[False, False], [False, False]])
         np.testing.assert_array_equal(result, expected_output)
 
@@ -193,6 +208,8 @@ class TestCreateClassLabelmapFromModelTwo(unittest.TestCase):
             "scores": torch.tensor([0.3])
         }
         result = create_class_labelmap_from_model(model_output, class_id=1, confidence_threshold=0.5)
+        
+        # Expect an array of False values--no masks meet the confidence threshold
         expected_output = np.array([[False, False], [False, False]])
         np.testing.assert_array_equal(result, expected_output)
 
@@ -216,6 +233,8 @@ class TestCreateClassLabelmapFromModelTwo(unittest.TestCase):
             "scores": torch.tensor([0.8, 0.7])
         }
         result = create_class_labelmap_from_model(model_output, class_id=1, confidence_threshold=0.5)
+        
+        # Expect the masks to be combined in the result
         expected_output = np.array([[True, True], [True, True]])
         np.testing.assert_array_equal(result, expected_output)
 
@@ -228,11 +247,14 @@ class TestCreateClassLabelmapFromModelTwo(unittest.TestCase):
             "labels": torch.tensor([1, 1]),
             "scores": torch.tensor([0.8, 0.7])
         }
+        
+        # Expect ValueError
         with self.assertRaises(ValueError):
             create_class_labelmap_from_model(model_output, class_id=1, confidence_threshold=0.5)
 
 class TestCreateProcessingLabelmap(unittest.TestCase):
     def setUp(self):
+        # Create sample data for testing
         self.model_output = {
             "masks": [
                 torch.tensor([[0.1, 0.2, 0.9], [0.4, 0.8, 0.6], [0.7, 0.3, 0.5]]),
@@ -247,6 +269,7 @@ class TestCreateProcessingLabelmap(unittest.TestCase):
         self.labels = {"AIRWAY_EPITHELIUM": 1, "VESSEL_ENDOTHELIUM": 2}
 
     def test_create_processing_labelmap(self):
+        # Test case for creating a labelmap with standard parameters
         expected_output = np.array([[2, 2, 1], [0, 1, 1], [2, 2, 1]], dtype=np.uint8)
         result = create_processing_labelmap(self.model_output, self.shape, self.confidence_threshold, self.labels)
         np.testing.assert_array_equal(result, expected_output)
@@ -281,6 +304,8 @@ class TestCreateProcessingLabelmap(unittest.TestCase):
 
     def test_non_standard_shape(self):
         non_standard_shape = (2, 3)
+        
+        # Expect ValueError--non-standard shape
         with self.assertRaises(ValueError):
             create_processing_labelmap(self.model_output, non_standard_shape, self.confidence_threshold, self.labels)
 
@@ -395,7 +420,6 @@ class TestCreatePostprocessingLabelmapTwo(unittest.TestCase):
         }
 
     def test_create_postprocessing_labelmap(self):
-        # Call the function
         result = create_postprocessing_labelmap(self.masks_labelmap, self.thresholded_labelmap, self.labels)
         
         # Check that the result is a numpy array
@@ -403,9 +427,6 @@ class TestCreatePostprocessingLabelmapTwo(unittest.TestCase):
 
         # Check that the result has the same shape as the input masks_labelmap
         self.assertEqual(result.shape, self.masks_labelmap.shape)
-
-        # Check that the result is of type uint8
-        #self.assertEqual(result.dtype, np.uint8)
 
         # Check that the result contains only expected label values
         expected_labels = set(self.labels.values()).union({0})
